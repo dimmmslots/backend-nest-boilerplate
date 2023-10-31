@@ -1,8 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { User } from '@prisma/client'
 import { PrismaService } from '@prisma/prisma.service'
-import { RegisterUserDTO } from './dtos/register.dto'
 import { compare, hash } from 'bcrypt'
 import { LoginDTO } from './dtos/login.dto'
+import { RegisterUserDTO } from './dtos/register.dto'
 
 @Injectable()
 export class AuthService {
@@ -24,16 +25,12 @@ export class AuthService {
     })
   }
 
-  async login(payload: LoginDTO) {
-    // TODO: Implement Login
-    const { email, password } = payload
-    const user = await this.prismaService.user.findUnique({ where: { email } })
-    if (!user) {
-      throw new UnauthorizedException()
-    }
+  async loginLocal(payload: LoginDTO): Promise<User> {
+    const { username, password } = payload
+    const user = await this.prismaService.user.findUnique({ where: { username } })
+    if (!user) throw new UnauthorizedException()
     const passwordMatches = await compare(password, user.password)
     if (!passwordMatches) throw new UnauthorizedException()
-    // TODO: return nya apa njir
-    return true
+    return user
   }
 }
