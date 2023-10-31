@@ -13,5 +13,6 @@ npm run lint ||
 )
  
 echo '🎉 No error found: committing this now.... ✨🚀🏄‍♂️🍻'
- 
 npx lint-staged
+#  include unit test
+npm run test
