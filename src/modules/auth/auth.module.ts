@@ -7,8 +7,10 @@ import { SessionSerializer } from './session.serialize'
 import { JwtStrategy } from './strategies/jwt.strategy'
 import { JwtModule } from '@nestjs/jwt'
 import env from '@/configs/env'
+import { UserModule } from '../user/user.module'
 @Module({
   imports: [
+    UserModule,
     PassportModule,
     JwtModule.register({
       secret: env.JWT_SECRET,
