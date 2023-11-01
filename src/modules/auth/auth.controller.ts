@@ -9,13 +9,13 @@ export class AuthController {
 
   @Post('register')
   async registerUser(@Body() payload: RegisterUserDTO) {
-    await this.authService.registerUser(payload)
+    return await this.authService.registerUser(payload)
   }
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  async loginLocal(@Request() req: any) {
-    return req.body
+  async login(@Request() req: any) {
+    return req.user
   }
 
   @UseGuards(AuthenticatedGuard)
