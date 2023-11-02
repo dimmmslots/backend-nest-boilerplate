@@ -1,5 +1,7 @@
+import { MappingResponse } from '@/common/types/response.type'
 import env from '@/configs/env'
 import { DecodedJWT, PayloadAccessToken, ResponseToken } from '@/types/jwt'
+import { extractToken } from '@/utils/jwt.utils'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { User } from '@prisma/client'
@@ -51,19 +53,9 @@ export class AuthService {
     req.session.destroy()
   }
 
-  async logoutJwt(req: any): Promise<{ message: string }> {
+  async logoutJwt(req: any): Promise<MappingResponse> {
     req.session.destroy()
-
-    const authorizationHeader = req.headers.authorization
-    if (!authorizationHeader) {
-      return { message: "You aren't signed in yet." }
-    }
-
-    const [type, token] = authorizationHeader.split(' ')
-
-    if (type !== 'Bearer' || !token) {
-      return { message: "You aren't signed in yet." }
-    }
+    const token = extractToken(req)
 
     try {
       const decoded = this.jwtService.decode(token) as DecodedJWT
@@ -72,18 +64,18 @@ export class AuthService {
       })
 
       if (!userSession) {
-        return { message: "You aren't signed in yet." }
+        return { data: { message: "You aren't signed in yet." }, statusCode: 401 }
       }
 
       await this.prismaService.session_token_user.delete({
         where: { userId: decoded.sub, access_token: token }
       })
 
-      return { message: 'You have logged out successfully' }
+      return { data: { message: 'You have logged out successfully' }, statusCode: 200 }
     } catch (error) {
       // Handle any potential errors, such as invalid tokens or database issues.
       // Log the error for further investigation.
-      return { message: 'An error occurred during logout' }
+      return { data: { message: 'An error occurred during logout' }, statusCode: 401 }
     }
   }
 
@@ -181,6 +173,44 @@ export class AuthService {
     return {
       access_token,
       refresh_token
+    }
+  }
+
+  async createRefreshToken(req: any) {
+    const selectToken = await this.prismaService.session_token_user.findUnique({
+      where: {
+        userId: req.user.id
+      }
+    })
+
+    if (!selectToken) throw new UnauthorizedException()
+    try {
+      // verify refresh token
+      await this.jwtService.verify(selectToken.refresh_token, { secret: env.JWT_REFRESH_SECRET })
+      const payloadToken: PayloadAccessToken = {
+        sub: req.user.id,
+        username: req.user.username
+      }
+      const access_token = await this.jwtService.sign(payloadToken, { secret: env.JWT_SECRET })
+      // update session_token in db
+      return await this.prismaService.session_token_user.update({
+        where: {
+          userId: req.user.id
+        },
+        data: {
+          access_token
+        },
+        select: {
+          access_token: true
+        }
+      })
+    } catch (e) {
+      // delete if refresh token is invalid
+      await this.prismaService.session_token_user.delete({
+        where: {
+          userId: req.user.id
+        }
+      })
     }
   }
 }
