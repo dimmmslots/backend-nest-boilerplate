@@ -44,7 +44,7 @@ export class AuthController {
     return req.user
   }
 
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   /**

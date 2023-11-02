@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common'
-import { user } from '@nextui-org/react'
 import { PrismaService } from '@prisma/prisma.service'
 
 @Injectable()
@@ -10,18 +9,9 @@ export class UserService {
     return await this.prismaService.user.findMany()
   }
 
-  async findUnique({ username, id, access_token }: { username: string; id: string; access_token: string }) {
-    return await this.prismaService.user.findUnique({
-      where: {
-        id,
-        username,
-        session_token_user: {
-          access_token
-        }
-      },
-      include: {
-        session_token_user: true
-      }
+  async findUserSession(id: string, access_token: string) {
+    return await this.prismaService.session_token_user.findUnique({
+      where: { userId: id, access_token }
     })
   }
 }

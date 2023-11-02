@@ -1,5 +1,5 @@
 import env from '@/configs/env'
-import { PayloadAccessToken, ResponseToken } from '@/types/jwt'
+import { DecodedJWT, PayloadAccessToken, ResponseToken } from '@/types/jwt'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { User } from '@prisma/client'
@@ -15,7 +15,7 @@ export class AuthService {
   ) {}
 
   async registerUser(payload: RegisterUserDTO) {
-    const { email, username, password } = payload
+    const { username, password } = payload
     const hashed = await hash(password, 10)
     return await this.prismaService.user.create({
       data: {
@@ -51,13 +51,39 @@ export class AuthService {
     req.session.destroy()
   }
 
-  async logoutJwt(req: any): Promise<{
-    message: string
-  }> {
+  async logoutJwt(req: any): Promise<{ message: string }> {
     req.session.destroy()
-    await this.prismaService.session_token_user.delete({ where: { userId: req.user.id } })
-    return {
-      message: 'Logout successfully'
+
+    const authorizationHeader = req.headers.authorization
+    if (!authorizationHeader) {
+      return { message: "You aren't signed in yet." }
+    }
+
+    const [type, token] = authorizationHeader.split(' ')
+
+    if (type !== 'Bearer' || !token) {
+      return { message: "You aren't signed in yet." }
+    }
+
+    try {
+      const decoded = this.jwtService.decode(token) as DecodedJWT
+      const userSession = await this.prismaService.session_token_user.findUnique({
+        where: { userId: decoded.sub, access_token: token }
+      })
+
+      if (!userSession) {
+        return { message: "You aren't signed in yet." }
+      }
+
+      await this.prismaService.session_token_user.delete({
+        where: { userId: decoded.sub, access_token: token }
+      })
+
+      return { message: 'You have logged out successfully' }
+    } catch (error) {
+      // Handle any potential errors, such as invalid tokens or database issues.
+      // Log the error for further investigation.
+      return { message: 'An error occurred during logout' }
     }
   }
 
@@ -78,7 +104,7 @@ export class AuthService {
       // verify user token is valid or not from database
       try {
         // verify jwt
-        await this.jwtService.verify(selectToken.access_token, { secret: env.JWT_SECRET }) // valid or not
+        await this.jwtService.verify(selectToken.access_token) // valid or not
         // delete user
         delete user.password
         return {
@@ -91,6 +117,11 @@ export class AuthService {
         const { access_token, refresh_token } = await this.generateToken({
           sub: user.id,
           username: user.username
+        })
+        // TODO: update new token to db
+        await this.prismaService.session_token_user.update({
+          where: { userId: user.id, access_token: selectToken.access_token },
+          data: { access_token }
         })
         delete user.password
         return {

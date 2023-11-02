@@ -14,3 +14,10 @@ export interface PayloadAccessToken {
   sub: string
   username: string
 }
+
+export interface DecodedJWT {
+  sub: string
+  username: string
+  iat: number
+  exp: number
+}
