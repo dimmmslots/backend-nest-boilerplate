@@ -1,9 +1,8 @@
-import { Body, Controller, Get, Post, Request, UseGuards } from '@nestjs/common'
+import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard'
+import { LocalAuthGuard } from '@/modules/auth/guards/local-auth.guard'
+import { Body, Controller, Get, Post, Request, UseGuards, HttpCode, HttpStatus } from '@nestjs/common'
 import { AuthService } from './auth.service'
 import { RegisterUserDTO } from './dtos/register.dto'
-import { AuthenticatedGuard } from '@/modules/auth/guards/auth.guard'
-import { LocalAuthGuard } from '@/modules/auth/guards/local-auth.guard'
-import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard'
 
 /**
  * guards explain :
@@ -45,9 +44,16 @@ export class AuthController {
     return req.user
   }
 
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(JwtAuthGuard)
   @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  /**
+   * if you use passport-local
+   * use function logout(req)
+   * if you use passport-jwt
+   * use function logoutJwt(req)
+   */
   async logout(@Request() req) {
-    return await this.authService.logout(req)
+    return await this.authService.logoutJwt(req)
   }
 }

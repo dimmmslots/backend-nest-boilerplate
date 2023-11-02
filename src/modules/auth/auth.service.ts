@@ -40,43 +40,114 @@ export class AuthService {
   async loginJwt(payload: User): Promise<ResponseToken> {
     const { username } = payload
     const user = await this.prismaService.user.findUnique({ where: { username: username } })
-    return await this.createToken({ sub: payload.id, username: payload.username }, user)
+    return await this.createToken(user)
   }
 
+  /**
+   * logout local session
+   * @param req request
+   */
   async logout(req: any) {
     req.session.destroy()
-    return 'ok'
   }
 
-  protected async createToken(payload: PayloadAccessToken, user: User): Promise<ResponseToken> {
-    const [access_token, refresh_token] = await Promise.all([
-      this.jwtService.sign(payload, {
-        secret: env.JWT_SECRET
-      }),
-      this.jwtService.sign(payload, {
-        secret: env.JWT_REFRESH_SECRET
-      })
-    ])
+  async logoutJwt(req: any): Promise<{
+    message: string
+  }> {
+    req.session.destroy()
+    await this.prismaService.session_token_user.delete({ where: { userId: req.user.id } })
+    return {
+      message: 'Logout successfully'
+    }
+  }
 
-    // create or update token
-    await this.prismaService.session_token_user.upsert({
+  /**
+   * create token helper
+   * @param user User
+   * @returns Promise ResponseToken
+   */
+  protected async createToken(user: User): Promise<ResponseToken> {
+    // validate token if token is exist in database but not expired
+    const selectToken = await this.prismaService.session_token_user.findUnique({
       where: {
         userId: user.id
-      },
-      create: {
-        userId: user.id,
-        access_token,
-        refresh_token
-      },
-      update: {
-        access_token,
-        refresh_token
       }
     })
 
-    delete user.password
+    if (selectToken) {
+      // verify user token is valid or not from database
+      try {
+        // verify jwt
+        await this.jwtService.verify(selectToken.access_token, { secret: env.JWT_SECRET }) // valid or not
+        // delete user
+        delete user.password
+        return {
+          user,
+          access_token: selectToken.access_token,
+          refresh_token: selectToken.refresh_token
+        }
+      } catch (e) {
+        // if error create token
+        const { access_token, refresh_token } = await this.generateToken({
+          sub: user.id,
+          username: user.username
+        })
+        delete user.password
+        return {
+          user,
+          access_token,
+          refresh_token
+        }
+      }
+    } else {
+      // if database session_token is null
+      const { access_token, refresh_token } = await this.generateToken({
+        sub: user.id,
+        username: user.username
+      })
+      // create or update token
+      await this.prismaService.session_token_user.upsert({
+        where: {
+          userId: user.id
+        },
+        create: {
+          userId: user.id,
+          access_token,
+          refresh_token
+        },
+        update: {
+          access_token,
+          refresh_token
+        }
+      })
+
+      delete user.password
+      return {
+        user,
+        access_token,
+        refresh_token
+      }
+    }
+  }
+
+  protected async generateToken(
+    payload: PayloadAccessToken
+  ): Promise<Pick<ResponseToken, 'access_token' | 'refresh_token'>> {
+    // make payload for encode to jwt
+    const payloadToken: PayloadAccessToken = {
+      sub: payload.sub,
+      username: payload.username
+    }
+    // make jwt token
+    const [access_token, refresh_token] = await Promise.all([
+      this.jwtService.sign(payloadToken, {
+        secret: env.JWT_SECRET
+      }),
+      this.jwtService.sign(payloadToken, {
+        secret: env.JWT_REFRESH_SECRET
+      })
+    ])
     return {
-      user,
       access_token,
       refresh_token
     }

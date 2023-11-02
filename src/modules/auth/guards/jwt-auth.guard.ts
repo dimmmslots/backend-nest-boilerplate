@@ -25,14 +25,15 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       const token = this.extractToken(request)
       // verify jwt
       const payload = await this.jwtService.verify(token)
-      // get user
+      // validate token
       const user = await this.userService.findUnique({
         username: payload.username,
-        id: payload.sub
+        id: payload.sub,
+        access_token: token
       })
-      if (!user.session_token_user || user.session_token_user === null) throw new UnauthorizedException()
-      // implementation blacklist token
-      if (user.session_token_user.access_token != token) throw new UnauthorizedException('this token blacklist')
+      // check validate token is null or not
+      if (user === null) throw new UnauthorizedException('Token is not valid')
+      // call super guard
       return (await super.canActivate(context)) as boolean
     } catch (e) {
       throw new UnauthorizedException(e.message)
