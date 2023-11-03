@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
-import { PORT } from '@/configs/env'
+import env from '@/configs/env'
 import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import * as passport from 'passport'
 import * as session from 'express-session'
@@ -18,7 +18,7 @@ async function bootstrap(): Promise<void> {
   )
   app.use(passport.initialize())
   app.use(passport.session())
-  const port = PORT || 3000
+  const port = env.PORT || 3000
   await app.listen(port)
 }
 bootstrap()

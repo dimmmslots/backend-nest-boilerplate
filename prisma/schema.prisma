@@ -11,8 +11,19 @@ datasource db {
 }
 
 model User {
-  id String @id @default(cuid())
-  email String @unique
-  username String @unique
-  password String 
+  id                 String              @id @default(cuid())
+  username           String              @unique
+  password           String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  session_token_user session_token_user?
+}
+
+model session_token_user {
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String   @unique
+  access_token  String?
+  refresh_token String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

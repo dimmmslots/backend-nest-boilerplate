@@ -8,4 +8,10 @@ export class UserService {
   async getAllUsers() {
     return await this.prismaService.user.findMany()
   }
+
+  async findUserSession(id: string, access_token: string) {
+    return await this.prismaService.session_token_user.findUnique({
+      where: { userId: id, access_token }
+    })
+  }
 }
