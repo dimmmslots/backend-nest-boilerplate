@@ -19,8 +19,11 @@
     "noFallthroughCasesInSwitch": false,
     "paths": {
       "@/*": ["src/*"],
-      "@prisma/*": ["prisma/*"],
+      "@prisma/client/*": ["node_modules/@prisma/client/*"],
+      "@db/*": ["prisma/*"],
       "@common/*": ["src/common/*"]
-    }
+    },
+    "types": ["@types/jest"],
+    "resolveJsonModule": true
   }
 }
