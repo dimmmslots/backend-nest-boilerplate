@@ -5,7 +5,7 @@ import { LocalStrategy } from './strategies/local.strategy'
 import { PassportModule } from '@nestjs/passport'
 import { SessionSerializer } from './session.serialize'
 import { JwtStrategy } from './strategies/jwt.strategy'
-import { JwtModule } from '@nestjs/jwt'
+import { JwtModule, JwtService } from '@nestjs/jwt'
 import env from '@/configs/env'
 import { UserModule } from '../user/user.module'
 @Module({

@@ -1,10 +1,8 @@
-import z from 'zod'
+const envSchema = {
+  DATABASE_URL: process.env.DATABASE_URL,
+  PORT: process.env.PORT,
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET
+}
 
-const envSchema = z.object({
-  DATABASE_URL: z.string(),
-  PORT: z.string().optional(),
-  JWT_SECRET: z.string(),
-  JWT_REFRESH_SECRET: z.string()
-})
-
-export default envSchema.parse(process.env)
+export default envSchema
