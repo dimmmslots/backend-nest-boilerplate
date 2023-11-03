@@ -164,10 +164,12 @@ export class AuthService {
     // make jwt token
     const [access_token, refresh_token] = await Promise.all([
       this.jwtService.sign(payloadToken, {
-        secret: env.JWT_SECRET
+        secret: env.JWT_SECRET,
+        expiresIn: '50s'
       }),
       this.jwtService.sign(payloadToken, {
-        secret: env.JWT_REFRESH_SECRET
+        secret: env.JWT_REFRESH_SECRET,
+        expiresIn: '1m'
       })
     ])
     return {
@@ -177,9 +179,12 @@ export class AuthService {
   }
 
   async createRefreshToken(req: any) {
+    const access_token = extractToken(req)
+    // check access_token and user id exist or not from session_token_user table
     const selectToken = await this.prismaService.session_token_user.findUnique({
       where: {
-        userId: req.user.id
+        userId: req.user.id,
+        access_token
       }
     })
 
@@ -211,6 +216,8 @@ export class AuthService {
           userId: req.user.id
         }
       })
+
+      throw new UnauthorizedException()
     }
   }
 }

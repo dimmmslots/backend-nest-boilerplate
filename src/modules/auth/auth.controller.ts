@@ -1,9 +1,10 @@
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard'
 import { LocalAuthGuard } from '@/modules/auth/guards/local-auth.guard'
-import { Body, Controller, Get, Post, Request, UseGuards, HttpCode, HttpStatus, Res } from '@nestjs/common'
+import { Body, Controller, Get, Post, Request, Res, UseGuards } from '@nestjs/common'
+import { Response } from 'express'
 import { AuthService } from './auth.service'
 import { RegisterUserDTO } from './dtos/register.dto'
-import { Response } from 'express'
+import { AuthenticatedGuard } from './guards/auth.guard'
 /**
  * guards explain :
  * if you use passport-local
@@ -44,7 +45,8 @@ export class AuthController {
     return req.user
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthenticatedGuard)
+  // @UseGuards(RefreshTokenGuard)
   @Post('refresh')
   async refresh(@Request() req) {
     return await this.authService.createRefreshToken(req)
