@@ -10,7 +10,7 @@ export interface ResponseToken {
   user?: Omit<User, 'password'>
 }
 
-export interface PayloadAccessToken {
+export interface PayloadToken {
   sub: string
   username: string
 }

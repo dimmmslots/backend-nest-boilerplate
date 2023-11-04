@@ -1,7 +1,7 @@
 import { MappingResponse } from '@/common/types/response.type'
 import env from '@/configs/env'
-import { DecodedJWT, PayloadAccessToken, ResponseToken } from '@/types/jwt'
-import { extractToken } from '@/utils/jwt.utils'
+import { DecodedJWT, PayloadToken, ResponseToken } from '@/types/jwt'
+// import { extractToken, generateAccessToken, generateRefreshToken } from '@/utils/jwt.utils'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { User } from '@prisma/client'
@@ -9,10 +9,12 @@ import { PrismaService } from '@db/prisma.service'
 import { compare, hash } from 'bcrypt'
 import { LoginDTO } from './dtos/login.dto'
 import { RegisterUserDTO } from './dtos/register.dto'
+import { JwtUtilService } from '@/utils/jwt.utils'
 @Injectable()
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
+    private readonly jwtUtilService: JwtUtilService,
     private readonly prismaService: PrismaService
   ) {}
 
@@ -55,7 +57,7 @@ export class AuthService {
 
   async logoutJwt(req: any): Promise<MappingResponse> {
     req.session.destroy()
-    const token = extractToken(req)
+    const token = this.jwtUtilService.extractToken(req)
 
     try {
       const decoded = this.jwtService.decode(token) as DecodedJWT
@@ -153,24 +155,16 @@ export class AuthService {
     }
   }
 
-  protected async generateToken(
-    payload: PayloadAccessToken
-  ): Promise<Pick<ResponseToken, 'access_token' | 'refresh_token'>> {
+  protected async generateToken(payload: PayloadToken): Promise<Pick<ResponseToken, 'access_token' | 'refresh_token'>> {
     // make payload for encode to jwt
-    const payloadToken: PayloadAccessToken = {
+    const payloadToken: PayloadToken = {
       sub: payload.sub,
       username: payload.username
     }
     // make jwt token
     const [access_token, refresh_token] = await Promise.all([
-      this.jwtService.sign(payloadToken, {
-        secret: env.JWT_SECRET,
-        expiresIn: '50s'
-      }),
-      this.jwtService.sign(payloadToken, {
-        secret: env.JWT_REFRESH_SECRET,
-        expiresIn: '1m'
-      })
+      this.jwtUtilService.generateAccessToken(payload),
+      this.jwtUtilService.generateRefreshToken(payload)
     ])
     return {
       access_token,
@@ -178,8 +172,8 @@ export class AuthService {
     }
   }
 
-  async createRefreshToken(req: any) {
-    const access_token = extractToken(req)
+  async createNewAccessToken(req: any) {
+    const access_token = this.jwtUtilService.extractToken(req)
     // check access_token and user id exist or not from session_token_user table
     const selectToken = await this.prismaService.session_token_user.findUnique({
       where: {
@@ -192,11 +186,11 @@ export class AuthService {
     try {
       // verify refresh token
       await this.jwtService.verify(selectToken.refresh_token, { secret: env.JWT_REFRESH_SECRET })
-      const payloadToken: PayloadAccessToken = {
+      const payloadToken: PayloadToken = {
         sub: req.user.id,
         username: req.user.username
       }
-      const access_token = await this.jwtService.sign(payloadToken, { secret: env.JWT_SECRET })
+      const access_token = await this.jwtUtilService.generateAccessToken(payloadToken)
       // update session_token in db
       return await this.prismaService.session_token_user.update({
         where: {

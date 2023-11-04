@@ -1,5 +1,7 @@
 import { UserService } from '@/modules/user/user.service'
-import { extractToken } from '@/utils/jwt.utils'
+import { JwtUtilService } from '@/utils/jwt.utils'
+// import { extractToken } from '@/utils/jwt.utils'
+
 import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { AuthGuard } from '@nestjs/passport'
@@ -14,6 +16,7 @@ import { Request } from 'express'
 export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(
     private readonly userService: UserService,
+    private readonly jwtUtilService: JwtUtilService,
     private readonly jwtService: JwtService
   ) {
     super()
@@ -23,7 +26,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       // extract request
       const request = context.switchToHttp().getRequest<Request>()
       // extract token from header
-      const token = extractToken(request)
+      const token = this.jwtUtilService.extractToken(request)
       // verify jwt
       const payload = await this.jwtService.verify(token)
       // validate token

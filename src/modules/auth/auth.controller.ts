@@ -49,7 +49,7 @@ export class AuthController {
   // @UseGuards(RefreshTokenGuard)
   @Post('refresh')
   async refresh(@Request() req) {
-    return await this.authService.createRefreshToken(req)
+    return await this.authService.createNewAccessToken(req)
   }
 
   // @UseGuards(JwtAuthGuard)
